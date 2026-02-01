@@ -17,13 +17,12 @@ CORS(app)  # อนุญาตให้หน้าเว็บคุยกั�
 
 print("🔄 กำลังเริ่มระบบ AI Data Scientist Server (Web Mode)...")
 
-# --- ส่วนแก้ไขกุญแจ (ฝังลงโค้ดโดยตรง) ---
-# นี่คือกุญแจ Firebase ของคุณที่ฝังลงไปเลย เพื่อแก้ปัญหาไฟล์อ่านไม่ได้
+# --- ส่วนแก้ไขกุญแจ (ฝังลงโค้ดโดยตรง - อัปเดตล่าสุด) ---
 key_dict = {
   "type": "service_account",
   "project_id": "win-assistant-462002",
-  "private_key_id": "874e7636b5dc4ad0bd835fc972c2b2ba760533ba",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDF0w8/eq4za/l2\nozelSwXbSB8V6ThxnNwjqhXnaNVXiXqtWwjVkhiiuwAfdmn/pHNvhSBrBXBv807T\ngGpU3wW1kzHHMHIkuCghmRbQQ2LdcCyyddQANYxVoJp6kvWESdK389fpU0+E/Mpz\nSBrNOaaf1+KDPdt2zptKYLztAKmq6Plbi7N/8/TP4wEljKq2pQ1p93ayl3AXkoEm\nGk/U7cuOZuGLoGJ6DSm5PYM156jbIyxMP8Q3VgK/BNSBlCAlKEDy0dWhRRcuZQaN\nozd1J3YNqREdF2i6+nETUIUpLqtl/pU6Hc4rieSfue+m7C4q/KBNmGqOYlT3sXPJ\n/YviDkk5AgMBAAECggEAC6acVzdA+RR4hmdsCuvFb1DPb+BHYoa62l+5+8+v3O5Q\nqxwQX1jWUQfKAEc53s1zviWa+GKesdgSOOnvK4rivkQhGSzHL5+6Y6C/wUncbUFC\nrTjgl5drMs1CKZPHc84GrRwdUOMZSFbhD4XJ1byMIA28QtGBwA8uSy3opya0Dkfq\nQLDE/d2k+YTHdaL5V21+3aITUVKMt2amwyVxBT1ynyJBVp1eMc4dNTocz7R23071\ngg+AfqpiLwcmj92KB9VrTaNdiZMwsak6enuLfaucSIfcgFQqeRJe+k45nlzhguEC\nJz/4DfqKMnY2qCkeFqyqgj2xBwKIH6lK/7ZNdCF/7wKBgQDlBFHjOUYpui/iooMV\nDypajIypXzV8kZbwZPSflutXhUm6N8lyWv5YPmUek21HczlnogeddJ1g1DqPQd5l\niV6At0PggTxOSesDlZQt2CZLfIyfCTohrYPwynV7DWHz9LxOzvt2eziFMZotlyUC\nLqN9igYcultmLyVSEz5J9FoA1wKBgQDdIedjVoCn0n7mM+4waTc6DhR0exPRY2S9\nwBsNGqHQFGghjTh9q8FV78E/dlIN9xxCJn9UHtmRbVQchjiE5M94LlcGK3vki66h\nlJzI/6CzInxapI9fhSu4oU9luwu9A/MJ0ERN7GqLrtlRXqYJFFdGqU//ywbTC/ji\nbOI/RT30bwKBgHXNTg3ylRu7sQwECidYALJJH8WzusCT5y9KzuYUbIQ9hJosPgv7\nsF9V4Q/kR877/yhGmWIt7RI0uNadzDcwfRL6sgiWkZ23uhLC61DVoYUs0Oyxg1x1\nc6v1iI6+aIdjeUWUhJcCdSVWSXdwCtJfiSt3RwOZ/I/IaosYaO8DqRRLAoGBANiG\n1jejAB9UMgXfW5/zpqwmFUlpKqKhHIfgj5xpM4C4Oq5/xYzonUs0lJk7lmUuTnFH\nmO4Ztxh7YRz9IGKgWbZoSbY05f+H9tso1czK4eQGJJXtBKaXk5QZ/9CxMnFGaLh3\nQiq7ECjucMUIVLQXQs5iA3+IoYoN8wpja7ZgaqXpAoGAA3B89PGl+EcBN79xcUCJ\nvDSAbjMYxlCZvpRl5i54kcUZbaG/mwTR+61zcohbmtSWTbt+tzVzsnCrIvDVT7MC\n6RAW8hHo6qDOebh3LEGjCzPS3C0D0aV880Hv4PUpNnFeO6Z4wKGOFEa/LxWxcRyD\nsj+UOptYCr2jak4a8S0y1i8=\n-----END PRIVATE KEY-----\n",
+  "private_key_id": "8bd1899625d7cb5da8d9af585f2fa919999df02c",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDAdQ71VIcSz6tq\n3CKL7T6PjedlbPcoJnk2XjCe5+uPFK83G7B94xi0h2EAtG0AOFmeVICCLWm9gkfB\nhmCJBFBHHPcafswYMVAHETD2B5vjd/dZkiCqgLPT8BThJdDw7DDHw83Rv2bhRXSN\n79+TdjHOfCL4A0hnQ41HWgNHj4KWJoCnbP3IVPYB5dkLYqkz4Uw3dE0cOX8/Nd4k\nz3SbXoj95JRY974oiBLNoohjHtzvqdZG0HZ/0tq34VK5zD9vV9FlhlVxX4BrP3m0\nFi9YiDprrQVeKSjPCb75V8pYF4/zUkzQZ83l3EIKYZ3DtfvpCkcavfaDSg9RoEj0\nveOnCcZlAgMBAAECggEAAhLAwH/SnK9EB3irnppFrEI5FeyglPwlHiLRn0ScUwRE\nBvHzasfBgmBa+Sj4a6IvxPbgE4bttq7qmvkZnSBAxSNYvh5TkIcnd4wF3QCj+0VV\nks9yLqQIS+YwM2S25YGF3QEM/I91SkP3R3goDmydiL3pmoZeh05A/V3I30J6g6eN\nvvUccK4V3yoY0lN5kDRKsRkfwfmB4qg5ULi1F7tv1OoCvlJqXFq7fCVExr+A/4yM\nanTgUpovIWdAcGx1HD+muI5Rn4XJuKXGosv7++EjIAgOxgysZV6w5YMPpoRotuip\n5kVeI8G0D+zi7vnmmgSWloEXeJP8mpt+RoTYjlZtgQKBgQDe1dYIksIgij1w7dpX\nESQ5TpCGEsTu4yNPNaHYjb0wrE1DC1OUO+89QZtf+SZrscI/Wnkf6OSI2nHFr1ha\ncOQCY0TgeG99DvQgduVvDi92AyGDH9p3wOVB9qLljZFslERTEDUuSTzSnA89rv1E\n4u3D2medYV3oU3pnV5/UbFplNQKBgQDdGczXjSI50Zh1BArmMgVFK60TgtURY0j1\nkle9QO2mg7AZV1+/Ce8xVKN4LmbEQmuXSLMoXXSUu+/4fW+2Uwas2URK97NelFFo\n/GvveoeKsVzNoGlc6jaFo7gZKMevlavHX0j0x3edQQO9ruOn0upA3F/I71quZF4g\ns+rno3vycQKBgQDZ3GL32tQlEELlyAYyHbY2uRMfofYcQMHizWLA4ELZ9XtMUySR\nxs8uKpiICoV/wTlSy1ek1QOqsTeOuNI/CiRCGV/bvqPxts8Ddnr2Sv4n+QOouVnU\nvyjlhwbYO8K0T3lFZJE6AayPlLhp7E3+LYecdknbWrh/Ti5cHxVKj+0JCQKBgQDQ\nGvmgJPoC+9GIyj5L/ubQ/VQRmkJb9Fx2r8CfpF5LLYXxxDidgoc9olGey+X0ciP8\np/PhWV1ipSYweDhOnwUYagOKoGyW5/lcXMJnDKhJFbmo3YRubRDWZovgOm8BSFn/\n9SKhKqHeRJR11Af5LV9Jn2MUqJ1sqZGjLFU8o7cFMQKBgEPE9mND9HvYx5lxpbnx\nx3MFUhqz4LiA34+7qVE9N5Lx7j5lpynKBwbHlAdddUdC9Zcmzv0QOpCIDR6BO8Io\noeQDMbmeUzw0En+3Qo6tIRkNzSD92TQvqt0nJ1yKMPged0hoMrU0i8ffdsfwzyFw\nN3wQcAfw8RUN3Eeo5+252gL2\n-----END PRIVATE KEY-----\n",
   "client_email": "firebase-adminsdk-fbsvc@win-assistant-462002.iam.gserviceaccount.com",
   "client_id": "115508101362044082902",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -42,7 +41,7 @@ try:
 except Exception as e:
     print(f"❌ Firebase Error: {e}")
 
-# ตั้งค่า Gemini
+# ตั้งค่า Gemini (API Key เดิมของคุณ)
 GEMINI_API_KEY = "AIzaSyD0xILMuDcMuQBpYUO2G5odNUp_xTDY4u0"
 genai.configure(api_key=GEMINI_API_KEY)
 
