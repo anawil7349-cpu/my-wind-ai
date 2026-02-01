@@ -3,7 +3,7 @@ import json
 import google.generativeai as genai
 import firebase_admin
 from firebase_admin import credentials, db
-from datetime import datetime
+from datetime import datetime, timedelta  # <--- 1. เพิ่ม timedelta
 import pandas as pd
 import io
 import sys
@@ -12,20 +12,18 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 # =====================================================
-# 1. ตั้งค่าและเตรียมระบบ (เพิ่ม Flask เข้ามา)
+# 1. ตั้งค่าและเตรียมระบบ
 # =====================================================
 app = Flask(__name__)
-CORS(app) # อนุญาตให้หน้าเว็บคุยกับ Server ได้
+CORS(app)
 
-print("🔄 กำลังเริ่มระบบ AI Data Scientist Server (Secure Cloud Mode)...")
+print("🔄 กำลังเริ่มระบบ AI Data Scientist Server (Timezone Fixed)...")
 
-# ------------------------------------------------------------------
-# 🔐 จุดที่แก้ไข: ดึง Key จาก Environment (เพื่อไม่ให้โดนแบน)
-# ------------------------------------------------------------------
+# ดึง Key จาก Environment (เพื่อความปลอดภัยบน Cloud)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 FIREBASE_CONFIG = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
 
-# ตรวจสอบว่ามี Key ไหม (แจ้งเตือนเฉยๆ ไม่สั่งปิดโปรแกรม)
+# ตรวจสอบ Key
 if not GEMINI_API_KEY:
     print("❌ Error: ไม่พบ GEMINI_API_KEY ใน Environment Variables")
 
@@ -33,16 +31,16 @@ if not GEMINI_API_KEY:
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# ตั้งค่า Firebase (รองรับทั้งแบบไฟล์ในเครื่อง และแบบ Cloud)
+# ตั้งค่า Firebase (รองรับทั้ง Cloud และ Local)
 try:
     if not firebase_admin._apps:
         cred = None
         if FIREBASE_CONFIG:
-            # กรณีรันบน Cloud (Render)
+            # กรณีรันบน Render
             cred = credentials.Certificate(json.loads(FIREBASE_CONFIG))
             print("✅ โหลด Firebase จาก Environment Variable สำเร็จ")
         elif os.path.exists("serviceAccountKey.json"):
-            # กรณีรันในเครื่อง (Fallback)
+            # กรณีรันในเครื่อง
             cred = credentials.Certificate("serviceAccountKey.json")
             print("✅ โหลด Firebase จากไฟล์ JSON สำเร็จ")
         
@@ -53,16 +51,10 @@ try:
             print("✅ Firebase Connected!")
         else:
             print("❌ Error: ไม่พบข้อมูลยืนยันตัวตน Firebase")
-except ValueError:
-    pass
 except Exception as e:
     print(f"❌ Firebase Error: {e}")
 
-# ------------------------------------------------------------------
-# จบส่วนแก้ไขความปลอดภัย (ด้านล่างคือ Logic เดิมของคุณเป๊ะๆ)
-# ------------------------------------------------------------------
-
-# หา Model (Logic เดิมของคุณ)
+# หา Model (Logic เดิม)
 valid_model_name = "models/gemini-1.5-flash"
 try:
     for m in genai.list_models():
@@ -73,7 +65,7 @@ except: pass
 print(f"✅ ใช้โมเดล: {valid_model_name}")
 
 # =====================================================
-# 2. โหลดข้อมูลเข้า RAM (DataFrame) - (เหมือนเดิมเป๊ะ)
+# 2. โหลดข้อมูลเข้า RAM (DataFrame)
 # =====================================================
 
 df = None 
@@ -90,7 +82,13 @@ def refresh_data():
         for key, val in data.items():
             if isinstance(val, dict) and 'ts' in val:
                 try:
-                    dt = datetime.fromtimestamp(val['ts'] / 1000)
+                    # -----------------------------------------------------------
+                    # 🕒 จุดที่แก้ไข: บังคับให้เป็นเวลาไทย (UTC+7) เสมอ
+                    # -----------------------------------------------------------
+                    # 1. แปลงเป็น UTC แท้ๆ ก่อน (utcfromtimestamp)
+                    # 2. บวก 7 ชั่วโมง (timedelta) เพื่อให้เป็นเวลาไทย
+                    dt = datetime.utcfromtimestamp(val['ts'] / 1000) + timedelta(hours=7)
+                    
                     wind_p = float(val.get('wind', {}).get('p', 0))
                     batt_p = float(val.get('batt', {}).get('p', 0))
                     wind_v = float(val.get('wind', {}).get('v', 0))
@@ -119,11 +117,9 @@ def refresh_data():
         print(f"❌ Error: {e}")
         return f"Error loading data: {e}"
 
-# เรียกโหลดข้อมูลครั้งแรก ถ้าเชื่อมต่อ Firebase ได้
 if firebase_admin._apps:
     refresh_data()
 
-# ฟังก์ชันช่วยดึงค่าสด (Internal Helper)
 def get_realtime_string():
     try:
         ref = db.reference('History')
@@ -137,14 +133,14 @@ def get_realtime_string():
     except: return "Error"
 
 # =====================================================
-# 3. เครื่องมือ Python Code Executor (เหมือนเดิมเป๊ะ)
+# 3. เครื่องมือ Python Code Executor
 # =====================================================
 
 def execute_python_analysis(code_string):
     global df
     print(f"\n[AI Thinking] 🧠 กำลังรันโค้ดวิเคราะห์ข้อมูล...")
     
-    if "import os" in code_string or "import sys" in code_string or "open(" in code_string:
+    if any(x in code_string for x in ["import os", "import sys", "open(", "eval("]):
         return "Security Alert: ไม่สามารถรันโค้ดที่มีความเสี่ยงได้"
 
     local_vars = {"df": df, "pd": pd, "result": None}
@@ -160,7 +156,7 @@ def execute_python_analysis(code_string):
         return f"เกิดข้อผิดพลาดในการรันโค้ด: {str(e)}"
 
 # =====================================================
-# 4. ความจำระยะยาว (เหมือนเดิมเป๊ะ)
+# 4. ความจำระยะยาว
 # =====================================================
 MEMORY_FILE = "ai_memory.json"
 ai_memory = {}
@@ -171,7 +167,6 @@ if os.path.exists(MEMORY_FILE):
 
 def remember_info(topic, info):
     ai_memory[topic] = info
-    # บน Cloud อาจจะเขียนไฟล์ไม่ได้ถาวร แต่ใส่ไว้ไม่ให้ Error
     return f"จำแล้ว: {topic} = {info}"
 
 def get_realtime_status():
@@ -180,7 +175,7 @@ def get_realtime_status():
 tools_list = [execute_python_analysis, remember_info, refresh_data, get_realtime_status]
 
 # =====================================================
-# 5. เริ่มต้นสมอง AI (เหมือนเดิมเป๊ะ)
+# 5. เริ่มต้นสมอง AI
 # =====================================================
 
 print("🧠 เชื่อมต่อสมอง...")
@@ -194,21 +189,13 @@ if GEMINI_API_KEY:
             คุณคือ Data Scientist AI อัจฉริยะที่มีข้อมูลพลังงานลมทั้งหมดในมือ
             
             1. คุณมีตัวแปร Global ชื่อ `df` (Pandas DataFrame) เก็บข้อมูลประวัติทั้งหมดไว้
-               - คอลัมน์ใน df: [datetime, date (str), hour (int), wind_wh (พลังงานที่ผลิต), batt_wh (พลังงานที่ใช้), wind_v, batt_v]
+               - คอลัมน์ใน df: [datetime, date (str), hour (int), wind_wh, batt_wh, wind_v, batt_v]
             
             2. เมื่อผู้ใช้ถามคำถามที่ซับซ้อน หรือต้องคำนวณ -> **จงเขียนโค้ด Python** เพื่อหาคำตอบ
                - ให้ใช้เครื่องมือ `execute_python_analysis`
                - เขียนโค้ด Pandas เพื่อคำนวณ และ **ต้องเก็บผลลัพธ์สุดท้ายไว้ในตัวแปรชื่อ `result` เสมอ**
-               
-               ตัวอย่างการคิด:
-               - ถาม: "วันไหนผลิตไฟเยอะสุด"
-               - โค้ดที่ AI ควรสร้าง: 
-                 daily_grp = df.groupby('date')['wind_wh'].sum()
-                 best_day = daily_grp.idxmax()
-                 max_val = daily_grp.max()
-                 result = f"วันที่ {{best_day}} ผลิตได้ {{max_val:.2f}} Wh"
             
-            3. ข้อมูลสถานะปัจจุบัน (Real-time) จะถูกแนบไปใน Prompt ให้แล้ว (ดูที่ [Realtime Status])
+            3. ข้อมูลสถานะปัจจุบัน (Real-time) จะถูกแนบไปใน Prompt
             4. ถ้าถามความรู้ทั่วไปที่คุณจำไว้ -> ตอบจาก Memory: {json.dumps(ai_memory, ensure_ascii=False)}
             5. ถ้าข้อมูลดูเก่าไป -> เรียก `refresh_data` ได้
             
@@ -220,7 +207,7 @@ if GEMINI_API_KEY:
         print(f"❌ Model Init Error: {e}")
 
 # =====================================================
-# 6. เปลี่ยนลูป input() เป็น Server API Route
+# 6. Server API Route
 # =====================================================
 
 @app.route('/ask', methods=['POST'])
@@ -236,15 +223,13 @@ def ask_ai():
         if not chat:
             return jsonify({"answer": "ระบบ AI ไม่พร้อมใช้งาน (ตรวจสอบ API Key ใน Environment)"})
 
-        # รับคำถามจากหน้าเว็บ
         data = request.json
         user_input = data.get('question')
         
-        # เตรียมข้อมูลบริบท (Context)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        live_status = get_realtime_string() # ดึงค่าแบตสดๆ
+        # ใช้วันเวลาปัจจุบัน (UTC+7)
+        current_time = (datetime.utcnow() + timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
+        live_status = get_realtime_string()
         
-        # สร้าง Prompt แบบยัดข้อมูลใส่ปาก (แก้ปัญหา AI บอกไม่รู้เรื่องแบต)
         prompt = f"""
         [Time: {current_time}]
         [Realtime Status: {live_status}]
@@ -253,7 +238,6 @@ def ask_ai():
         
         print(f"User asking: {user_input}")
         
-        # ส่งให้ AI คิด
         response = chat.send_message(prompt)
         
         return jsonify({"answer": response.text})
@@ -264,6 +248,5 @@ def ask_ai():
 
 # รัน Server
 if __name__ == '__main__':
-    # จุดแก้ไข: ต้องรับ Port จาก Environment เพื่อให้ Render รันได้
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port)
