@@ -5,37 +5,48 @@ import firebase_admin
 from firebase_admin import credentials, db
 from datetime import datetime
 import pandas as pd
-import io
-import sys
-import traceback
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import traceback
 
 # =====================================================
-# 1. ตั้งค่าและเตรียมระบบ (เพิ่ม Flask เข้ามา)
+# 1. ตั้งค่าและเตรียมระบบ
 # =====================================================
 app = Flask(__name__)
-CORS(app) # อนุญาตให้หน้าเว็บคุยกับ Server ได้
+CORS(app)  # อนุญาตให้หน้าเว็บคุยกับ Server ได้
 
 print("🔄 กำลังเริ่มระบบ AI Data Scientist Server (Web Mode)...")
 
-if not os.path.exists("serviceAccountKey.json"):
-    print("❌ Error: ไม่พบไฟล์ serviceAccountKey.json")
-    exit()
+# --- ส่วนแก้ไขกุญแจ (ฝังลงโค้ดโดยตรง) ---
+# นี่คือกุญแจ Firebase ของคุณที่ฝังลงไปเลย เพื่อแก้ปัญหาไฟล์อ่านไม่ได้
+key_dict = {
+  "type": "service_account",
+  "project_id": "win-assistant-462002",
+  "private_key_id": "874e7636b5dc4ad0bd835fc972c2b2ba760533ba",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDF0w8/eq4za/l2\nozelSwXbSB8V6ThxnNwjqhXnaNVXiXqtWwjVkhiiuwAfdmn/pHNvhSBrBXBv807T\ngGpU3wW1kzHHMHIkuCghmRbQQ2LdcCyyddQANYxVoJp6kvWESdK389fpU0+E/Mpz\nSBrNOaaf1+KDPdt2zptKYLztAKmq6Plbi7N/8/TP4wEljKq2pQ1p93ayl3AXkoEm\nGk/U7cuOZuGLoGJ6DSm5PYM156jbIyxMP8Q3VgK/BNSBlCAlKEDy0dWhRRcuZQaN\nozd1J3YNqREdF2i6+nETUIUpLqtl/pU6Hc4rieSfue+m7C4q/KBNmGqOYlT3sXPJ\n/YviDkk5AgMBAAECggEAC6acVzdA+RR4hmdsCuvFb1DPb+BHYoa62l+5+8+v3O5Q\nqxwQX1jWUQfKAEc53s1zviWa+GKesdgSOOnvK4rivkQhGSzHL5+6Y6C/wUncbUFC\nrTjgl5drMs1CKZPHc84GrRwdUOMZSFbhD4XJ1byMIA28QtGBwA8uSy3opya0Dkfq\nQLDE/d2k+YTHdaL5V21+3aITUVKMt2amwyVxBT1ynyJBVp1eMc4dNTocz7R23071\ngg+AfqpiLwcmj92KB9VrTaNdiZMwsak6enuLfaucSIfcgFQqeRJe+k45nlzhguEC\nJz/4DfqKMnY2qCkeFqyqgj2xBwKIH6lK/7ZNdCF/7wKBgQDlBFHjOUYpui/iooMV\nDypajIypXzV8kZbwZPSflutXhUm6N8lyWv5YPmUek21HczlnogeddJ1g1DqPQd5l\niV6At0PggTxOSesDlZQt2CZLfIyfCTohrYPwynV7DWHz9LxOzvt2eziFMZotlyUC\nLqN9igYcultmLyVSEz5J9FoA1wKBgQDdIedjVoCn0n7mM+4waTc6DhR0exPRY2S9\nwBsNGqHQFGghjTh9q8FV78E/dlIN9xxCJn9UHtmRbVQchjiE5M94LlcGK3vki66h\nlJzI/6CzInxapI9fhSu4oU9luwu9A/MJ0ERN7GqLrtlRXqYJFFdGqU//ywbTC/ji\nbOI/RT30bwKBgHXNTg3ylRu7sQwECidYALJJH8WzusCT5y9KzuYUbIQ9hJosPgv7\nsF9V4Q/kR877/yhGmWIt7RI0uNadzDcwfRL6sgiWkZ23uhLC61DVoYUs0Oyxg1x1\nc6v1iI6+aIdjeUWUhJcCdSVWSXdwCtJfiSt3RwOZ/I/IaosYaO8DqRRLAoGBANiG\n1jejAB9UMgXfW5/zpqwmFUlpKqKhHIfgj5xpM4C4Oq5/xYzonUs0lJk7lmUuTnFH\nmO4Ztxh7YRz9IGKgWbZoSbY05f+H9tso1czK4eQGJJXtBKaXk5QZ/9CxMnFGaLh3\nQiq7ECjucMUIVLQXQs5iA3+IoYoN8wpja7ZgaqXpAoGAA3B89PGl+EcBN79xcUCJ\nvDSAbjMYxlCZvpRl5i54kcUZbaG/mwTR+61zcohbmtSWTbt+tzVzsnCrIvDVT7MC\n6RAW8hHo6qDOebh3LEGjCzPS3C0D0aV880Hv4PUpNnFeO6Z4wKGOFEa/LxWxcRyD\nsj+UOptYCr2jak4a8S0y1i8=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@win-assistant-462002.iam.gserviceaccount.com",
+  "client_id": "115508101362044082902",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40win-assistant-462002.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
 
 try:
-    cred = credentials.Certificate("serviceAccountKey.json")
+    cred = credentials.Certificate(key_dict)
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://win-assistant-462002-default-rtdb.asia-southeast1.firebasedatabase.app'
     })
-    print("✅ Firebase Connected!")
-except ValueError:
-    pass
+    print("✅ Firebase Connected! (ใช้กุญแจแบบฝังโค้ด)")
+except Exception as e:
+    print(f"❌ Firebase Error: {e}")
 
+# ตั้งค่า Gemini
 GEMINI_API_KEY = "AIzaSyD0xILMuDcMuQBpYUO2G5odNUp_xTDY4u0"
 genai.configure(api_key=GEMINI_API_KEY)
 
-# หา Model (Logic เดิมของคุณ)
+# หา Model
 valid_model_name = "models/gemini-1.5-flash"
 try:
     for m in genai.list_models():
@@ -46,7 +57,7 @@ except: pass
 print(f"✅ ใช้โมเดล: {valid_model_name}")
 
 # =====================================================
-# 2. โหลดข้อมูลเข้า RAM (DataFrame) - (เหมือนเดิมเป๊ะ)
+# 2. โหลดข้อมูลเข้า RAM (DataFrame)
 # =====================================================
 
 df = None 
@@ -92,7 +103,7 @@ def refresh_data():
 
 refresh_data()
 
-# ฟังก์ชันช่วยดึงค่าสด (Internal Helper)
+# ฟังก์ชันช่วยดึงค่าสด
 def get_realtime_string():
     try:
         ref = db.reference('History')
@@ -106,7 +117,7 @@ def get_realtime_string():
     except: return "Error"
 
 # =====================================================
-# 3. เครื่องมือ Python Code Executor (เหมือนเดิมเป๊ะ)
+# 3. เครื่องมือ Python Code Executor
 # =====================================================
 
 def execute_python_analysis(code_string):
@@ -129,31 +140,30 @@ def execute_python_analysis(code_string):
         return f"เกิดข้อผิดพลาดในการรันโค้ด: {str(e)}"
 
 # =====================================================
-# 4. ความจำระยะยาว (เหมือนเดิมเป๊ะ)
+# 4. ความจำระยะยาว
 # =====================================================
 MEMORY_FILE = "ai_memory.json"
 ai_memory = {}
 if os.path.exists(MEMORY_FILE):
-    with open(MEMORY_FILE, "r", encoding="utf-8") as f: ai_memory = json.load(f)
+    try:
+        with open(MEMORY_FILE, "r", encoding="utf-8") as f: ai_memory = json.load(f)
+    except: pass
 
 def remember_info(topic, info):
     ai_memory[topic] = info
-    with open(MEMORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(ai_memory, f, ensure_ascii=False, indent=4)
+    try:
+        with open(MEMORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(ai_memory, f, ensure_ascii=False, indent=4)
+    except: pass
     return f"จำแล้ว: {topic} = {info}"
 
 def get_realtime_status():
-    try:
-        ref = db.reference('History')
-        snapshot = ref.order_by_key().limit_to_last(1).get()
-        val = list(snapshot.values())[0]
-        return f"สถานะล่าสุด: ลม {val['wind']['v']}V, แบต {val['batt']['v']}V"
-    except: return "ไม่สามารถดึงข้อมูลสดได้"
+    return get_realtime_string()
 
 tools_list = [execute_python_analysis, remember_info, refresh_data, get_realtime_status]
 
 # =====================================================
-# 5. เริ่มต้นสมอง AI (เหมือนเดิมเป๊ะ)
+# 5. เริ่มต้นสมอง AI
 # =====================================================
 
 print("🧠 เชื่อมต่อสมอง...")
@@ -164,46 +174,32 @@ model = genai.GenerativeModel(
     คุณคือ Data Scientist AI อัจฉริยะที่มีข้อมูลพลังงานลมทั้งหมดในมือ
     
     1. คุณมีตัวแปร Global ชื่อ `df` (Pandas DataFrame) เก็บข้อมูลประวัติทั้งหมดไว้
-       - คอลัมน์ใน df: [datetime, date (str), hour (int), wind_wh (พลังงานที่ผลิต), batt_wh (พลังงานที่ใช้), wind_v, batt_v]
+       - คอลัมน์: [datetime, date (str), hour (int), wind_wh, batt_wh, wind_v, batt_v]
     
-    2. เมื่อผู้ใช้ถามคำถามที่ซับซ้อน หรือต้องคำนวณ -> **จงเขียนโค้ด Python** เพื่อหาคำตอบ
-       - ให้ใช้เครื่องมือ `execute_python_analysis`
-       - เขียนโค้ด Pandas เพื่อคำนวณ และ **ต้องเก็บผลลัพธ์สุดท้ายไว้ในตัวแปรชื่อ `result` เสมอ**
-       
-       ตัวอย่างการคิด:
-       - ถาม: "วันไหนผลิตไฟเยอะสุด"
-       - โค้ดที่ AI ควรสร้าง: 
-         daily_grp = df.groupby('date')['wind_wh'].sum()
-         best_day = daily_grp.idxmax()
-         max_val = daily_grp.max()
-         result = f"วันที่ {{best_day}} ผลิตได้ {{max_val:.2f}} Wh"
+    2. ถ้าผู้ใช้ถามคำถามที่ต้องคำนวณ -> **จงเขียนโค้ด Python**
+       - ใช้เครื่องมือ `execute_python_analysis`
+       - ต้องเก็บผลลัพธ์ใส่ตัวแปร `result` เสมอ
     
-    3. ข้อมูลสถานะปัจจุบัน (Real-time) จะถูกแนบไปใน Prompt ให้แล้ว (ดูที่ [Realtime Status])
-    4. ถ้าถามความรู้ทั่วไปที่คุณจำไว้ -> ตอบจาก Memory: {json.dumps(ai_memory, ensure_ascii=False)}
-    5. ถ้าข้อมูลดูเก่าไป -> เรียก `refresh_data` ได้
-    
-    ตอบเป็นภาษาไทยอย่างมั่นใจ
+    3. ข้อมูลสถานะปัจจุบัน (Real-time) จะแนบไปใน Prompt คำว่า [Realtime Status]
+    4. ตอบเป็นภาษาไทยอย่างมั่นใจ สั้นกระชับ และเป็นธรรมชาติ
     """
 )
 
 chat = model.start_chat(enable_automatic_function_calling=True)
 
 # =====================================================
-# 6. เปลี่ยนลูป input() เป็น Server API Route
+# 6. Server API Route
 # =====================================================
 
 @app.route('/ask', methods=['POST'])
 def ask_ai():
     try:
-        # รับคำถามจากหน้าเว็บ
         data = request.json
         user_input = data.get('question')
         
-        # เตรียมข้อมูลบริบท (Context)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        live_status = get_realtime_string() # ดึงค่าแบตสดๆ
+        live_status = get_realtime_string()
         
-        # สร้าง Prompt แบบยัดข้อมูลใส่ปาก (แก้ปัญหา AI บอกไม่รู้เรื่องแบต)
         prompt = f"""
         [Time: {current_time}]
         [Realtime Status: {live_status}]
@@ -211,16 +207,12 @@ def ask_ai():
         """
         
         print(f"User asking: {user_input}")
-        
-        # ส่งให้ AI คิด
         response = chat.send_message(prompt)
-        
         return jsonify({"answer": response.text})
         
     except Exception as e:
         traceback.print_exc()
         return jsonify({"answer": f"Error: {str(e)}"})
 
-# รัน Server
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
