@@ -10,13 +10,14 @@ from flask_cors import CORS
 import traceback
 
 # =====================================================
-# 1. เริ่มต้นระบบ & โหลดความลับจาก Environment
+# 1. เริ่มต้นระบบ & โหลดความลับ
 # =====================================================
 app = Flask(__name__)
 CORS(app)
 
-print("🔄 กำลังเริ่มระบบ AI Data Scientist Server (Model List Fixed)...")
+print("🔄 กำลังเริ่มระบบ AI Data Scientist Server (Master Version)...")
 
+# ดึง Key จาก Environment (Render)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 FIREBASE_CONFIG_JSON = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
 
@@ -24,13 +25,17 @@ FIREBASE_CONFIG_JSON = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# ตั้งค่า Firebase
+# ตั้งค่า Firebase (รองรับทั้งไฟล์ในเครื่อง และ Environment บน Cloud)
 try:
     if not firebase_admin._apps:
         if FIREBASE_CONFIG_JSON:
+            # กรณีรันบน Cloud
             cred = credentials.Certificate(json.loads(FIREBASE_CONFIG_JSON))
+            print("✅ โหลด Firebase จาก Environment สำเร็จ")
         elif os.path.exists("serviceAccountKey.json"):
+            # กรณีรันในเครื่อง
             cred = credentials.Certificate("serviceAccountKey.json")
+            print("✅ โหลด Firebase จากไฟล์ JSON สำเร็จ")
         else:
             cred = None
             
@@ -43,35 +48,27 @@ except Exception as e:
     print(f"❌ Firebase Error: {e}")
 
 # =====================================================
-# ⚡️ FIX: ระบบเลือก Model ตามรายการที่คุณต้องการ (Try-Catch 404)
+# ⚡️ FIX: ระบบเลือก Model อัตโนมัติ (กัน Error 404)
 # =====================================================
 def get_smart_model():
-    # รายชื่อโมเดลที่คุณต้องการ (เรียงตามลำดับ)
     candidates = [
-        "gemini-1.5-flash",           # ตัวมาตรฐาน (มักจะผ่าน)
-        "models/gemini-1.5-flash",    # ตัวที่มีปัญหา 404 (จะถูกข้ามอัตโนมัติ)
-        "gemini-2.0-flash-exp",       # ตัวทดสอบ
-        "models/gemini-2.5-flash"     # ตัวที่คุณแจ้งว่าใช้ได้ในเครื่อง
+        "gemini-1.5-flash", 
+        "models/gemini-1.5-flash",
+        "gemini-2.0-flash-exp",
+        "models/gemini-2.5-flash"
     ]
     
-    print("🔍 กำลังค้นหาโมเดลที่ใช้งานได้บน Cloud...")
+    print("🔍 กำลังค้นหาโมเดล...")
     for m_name in candidates:
         try:
-            print(f"   ...ทดสอบ: {m_name}")
             model = genai.GenerativeModel(model_name=m_name)
-            # ลองยิงคำถามสั้นๆ เพื่อเช็คว่า Error 404 ไหม
-            model.generate_content("test") 
+            model.generate_content("test") # ลองยิงเทส
             print(f"✅ ใช้โมเดลสำเร็จ: {m_name}")
             return model
-        except Exception as e:
-            # ถ้าเจอ Error (เช่น 404 Not Found) ให้ข้ามไปตัวถัดไปทันที ไม่ให้โปรแกรมพัง
-            print(f"   ❌ ข้าม {m_name} (Error: {e})")
-            continue
+        except: continue
             
-    print("⚠️ ไม่พบโมเดลในรายการเลย พยายามใช้ 'gemini-1.5-flash' เป็นค่าสุดท้าย")
-    return genai.GenerativeModel("gemini-1.5-flash")
+    return genai.GenerativeModel("gemini-1.5-flash") # ตัวกันตาย
 
-# สร้างโมเดลเตรียมไว้
 model = None
 if GEMINI_API_KEY:
     try:
@@ -80,13 +77,13 @@ if GEMINI_API_KEY:
         print(f"❌ Model Init Error: {e}")
 
 # =====================================================
-# 2. การจัดการข้อมูล (Pandas + Timezone Fix)
+# 2. จัดการข้อมูล + แก้เวลาไทย (UTC+7)
 # =====================================================
 df = pd.DataFrame() 
 
 def refresh_data():
     global df
-    print("📥 กำลังซิงค์ข้อมูลจาก Firebase...")
+    print("📥 Syncing Data...")
     try:
         ref = db.reference('History')
         data = ref.get()
@@ -95,49 +92,44 @@ def refresh_data():
         records = []
         for key, val in data.items():
             if isinstance(val, dict) and 'ts' in val:
-                # 🕒 บังคับเวลาไทย UTC+7
+                # 🕒 FIX 1: แปลง Timestamp เป็นเวลาไทยทันที (UTC+7)
                 dt = datetime.utcfromtimestamp(val['ts'] / 1000) + timedelta(hours=7)
                 
                 wind_p = float(val.get('wind', {}).get('p', 0))
                 batt_p = float(val.get('batt', {}).get('p', 0))
-                wind_v = float(val.get('wind', {}).get('v', 0))
-                batt_v = float(val.get('batt', {}).get('v', 0))
                 
                 records.append({
-                    "datetime": dt,
-                    "date": dt.strftime("%Y-%m-%d"),
-                    "hour": dt.hour,
-                    "minute": dt.minute,
-                    "wind_p": wind_p,
-                    "batt_p": batt_p,
-                    "wind_wh": wind_p / 60,
-                    "batt_wh": batt_p / 60,
-                    "wind_v": wind_v,
-                    "batt_v": batt_v
+                    "datetime": dt,           # เวลาไทย
+                    "date": dt.strftime("%Y-%m-%d"), # วันที่ไทย (เอาไว้ Group)
+                    "wind_wh": wind_p / 60,   # พลังงานผลิต (Wh)
+                    "batt_wh": batt_p / 60    # พลังงานใช้ (Wh)
                 })
         
         df = pd.DataFrame(records)
         df['datetime'] = pd.to_datetime(df['datetime'])
-        print(f"✅ ข้อมูลพร้อมวิเคราะห์: {len(df)} แถว (Timezone Fixed)")
-        return f"อัปเดตสำเร็จ มีทั้งหมด {len(df)} รายการ"
+        print(f"✅ Data Ready: {len(df)} rows (Thai Timezone)")
+        return f"Updated {len(df)} records."
     except Exception as e:
         return f"Error: {e}"
 
+# โหลดข้อมูลครั้งแรก
 if firebase_admin._apps:
     refresh_data()
 
 # =====================================================
-# 3. AI Tools & Functions
+# 3. AI Tools
 # =====================================================
 def execute_python_analysis(code_string):
     global df
-    print(f"\n[AI Thinking] 🧠 รันโค้ดวิเคราะห์...")
+    print(f"\n[AI Thinking] 🧠 Running Code...")
     if any(f in code_string for f in ["import os", "import sys", "open(", "eval("]):
-        return "Security Alert: โค้ดมีความเสี่ยง"
+        return "Security Alert"
+    
     local_vars = {"df": df, "pd": pd, "result": None}
     try:
         exec(code_string, {}, local_vars)
-        return str(local_vars.get('result', "ไม่ได้กำหนดค่า 'result'"))
+        res = local_vars.get('result')
+        return str(res) if res is not None else "Code ran, but no 'result' variable set."
     except Exception as e:
         return f"Code Error: {e}"
 
@@ -146,58 +138,64 @@ def get_realtime_string():
         ref = db.reference('History')
         snapshot = ref.order_by_key().limit_to_last(1).get()
         val = list(snapshot.values())[0]
-        w_v, b_v = val.get('wind', {}).get('v', 0), val.get('batt', {}).get('v', 0)
+        w_v = val.get('wind', {}).get('v', 0)
+        b_v = val.get('batt', {}).get('v', 0)
         return f"Wind: {w_v}V, Batt: {b_v}V"
-    except: return "No Realtime Data"
+    except: return "No Data"
 
 tools_list = [execute_python_analysis, refresh_data]
-
-# สร้าง Chat Session
 chat = None
-if model:
-    try:
-        chat = model.start_chat(enable_automatic_function_calling=True)
-    except: pass
 
 # =====================================================
 # 4. API Routes
 # =====================================================
 @app.route('/')
 def home():
-    return "Wind AI Server is Running (Model Candidates Fixed)!"
+    return "Wind AI Server is Running 24/7 (Timezone Fixed)!"
 
 @app.route('/ask', methods=['POST'])
 def ask_ai():
     global chat
     try:
-        # Re-connect ถ้า Chat ยังไม่มี หรือหลุด
+        # Re-connect ถ้า Chat หลุด
         if not chat and model:
              chat = model.start_chat(enable_automatic_function_calling=True)
         
         if not chat:
-            return jsonify({"answer": "AI ยังไม่พร้อมใช้งาน (กรุณารอสักครู่ หรือเช็ค API Key)"})
+            return jsonify({"answer": "ระบบ AI ไม่พร้อมใช้งาน (เช็ค API Key)"})
 
         user_input = request.json.get('question')
         
-        # 🕒 ส่งเวลาไทยปัจจุบันให้ AI
+        # 🕒 FIX 2: ส่งเวลาไทยปัจจุบันให้ AI (เพื่อให้ตรงกับเวลาในตาราง)
         now_thai = (datetime.utcnow() + timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
         live_status = get_realtime_string()
         
-        system_prompt = """
-        คุณคือ Data Scientist AI วิเคราะห์พลังงานลม
-        - ข้อมูลประวัติอยู่ในตัวแปร `df` (Pandas) (เวลาไทยแล้ว)
-        - ถ้าถามยอดรวม/สถิติ -> ต้องเขียน Python ผ่าน `execute_python_analysis` เก็บผลที่ `result`
-        - ตอบเป็นภาษาไทย
+        # 🔥 Prompt บังคับโครงสร้างข้อมูลและเวลา
+        system_prompt = f"""
+        Current Thai Time: {now_thai}
+        Role: Python Data Scientist.
+        
+        DATASET (`df`):
+        - `datetime`: Thai Time (UTC+7)
+        - `wind_wh`: Power Production (Wh) -> ใช้สำหรับ "ไฟเข้า", "ผลิตไฟ"
+        - `batt_wh`: Power Consumption (Wh) -> ใช้สำหรับ "ใช้ไฟ", "กินไฟ"
+        
+        RULES:
+        1. For past data/stats, usage of `execute_python_analysis` is MANDATORY.
+        2. Assign final answer to `result` variable.
+        3. Do NOT output python code text. Execute it.
+        4. Answer in Thai.
+        
+        Question: {user_input}
         """
         
-        prompt = f"{system_prompt}\n[Current Thai Time: {now_thai}] [Realtime Status: {live_status}] Question: {user_input}"
-        
-        response = chat.send_message(prompt)
+        response = chat.send_message(system_prompt)
         return jsonify({"answer": response.text})
     except Exception as e:
         traceback.print_exc()
         return jsonify({"answer": f"Error: {str(e)}"})
 
 if __name__ == '__main__':
+    # รับ Port จาก Render
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
