@@ -15,8 +15,9 @@ import traceback
 app = Flask(__name__)
 CORS(app)
 
-print("🔄 กำลังเริ่มระบบ AI Data Scientist Server (Model & Timezone Fixed)...")
+print("🔄 กำลังเริ่มระบบ AI Data Scientist Server (Full Fixed)...")
 
+# 🔐 ดึง Key จาก Environment (Render)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 FIREBASE_CONFIG_JSON = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
 
@@ -44,15 +45,14 @@ except Exception as e:
     print(f"❌ Firebase Error: {e}")
 
 # =====================================================
-# ⚡️ FIX: ระบบเลือก Model ตามรายการที่คุณต้องการ
+# ⚡️ FIX: ระบบเลือก Model แบบที่คุณต้องการ
 # =====================================================
 def get_smart_model():
-    # รายชื่อโมเดลที่ต้องการลอง (เรียงลำดับการเรียก)
     candidates = [
         "gemini-1.5-flash", 
         "models/gemini-1.5-flash",
         "gemini-2.0-flash-exp",
-        "models/gemini-2.5-flash" # ตัวที่คุณแจ้งว่าใช้ได้ในเครื่อง
+        "models/gemini-2.5-flash"
     ]
     
     print("🔍 กำลังค้นหาโมเดลที่ใช้งานได้...")
@@ -64,8 +64,7 @@ def get_smart_model():
             model.generate_content("test") 
             print(f"✅ ใช้โมเดลสำเร็จ: {m_name}")
             return model
-        except Exception as e:
-            # print(f"   (ข้าม {m_name}: {e})") # เปิดคอมเมนต์ถ้าอยากเห็น error ย่อย
+        except Exception:
             continue
             
     print("⚠️ ไม่พบโมเดลในรายการ พยายามใช้ 'gemini-1.5-flash' เป็นค่าสุดท้าย")
@@ -95,7 +94,7 @@ def refresh_data():
         records = []
         for key, val in data.items():
             if isinstance(val, dict) and 'ts' in val:
-                # 🕒 บังคับเวลาไทย UTC+7
+                # 🕒 FIX TIMEZONE: แปลง UTC -> ไทย (UTC+7)
                 dt = datetime.utcfromtimestamp(val['ts'] / 1000) + timedelta(hours=7)
                 
                 wind_p = float(val.get('wind', {}).get('p', 0))
@@ -118,7 +117,7 @@ def refresh_data():
         
         df = pd.DataFrame(records)
         df['datetime'] = pd.to_datetime(df['datetime'])
-        print(f"✅ ข้อมูลพร้อมวิเคราะห์: {len(df)} แถว (Timezone Fixed)")
+        print(f"✅ ข้อมูลพร้อมวิเคราะห์: {len(df)} แถว (เวลาไทย UTC+7)")
         return f"อัปเดตสำเร็จ มีทั้งหมด {len(df)} รายการ"
     except Exception as e:
         return f"Error: {e}"
@@ -146,10 +145,10 @@ def get_realtime_string():
         ref = db.reference('History')
         snapshot = ref.order_by_key().limit_to_last(1).get()
         val = list(snapshot.values())[0]
-        w_v, b_v = val.get('wind', {}).get('v', 0), val.get('batt', {}).get('v', 0)
-        pct = max(0, min(100, ((b_v - 3.2) / (4.2 - 3.2)) * 100))
-        return f"Wind: {w_v}V, Batt: {b_v}V ({int(pct)}%)"
-    except: return "Error"
+        w_v = val.get('wind', {}).get('v', 0)
+        b_v = val.get('batt', {}).get('v', 0)
+        return f"Wind: {w_v}V, Batt: {b_v}V"
+    except: return "No Realtime Data"
 
 tools_list = [execute_python_analysis, refresh_data]
 
@@ -157,6 +156,7 @@ tools_list = [execute_python_analysis, refresh_data]
 chat = None
 if model:
     try:
+        # Instruction สำคัญ: ย้ำให้ใช้ Python ถ้าถามเรื่องประวัติ
         chat = model.start_chat(enable_automatic_function_calling=True)
     except: pass
 
@@ -165,7 +165,7 @@ if model:
 # =====================================================
 @app.route('/')
 def home():
-    return "Wind AI Server is Running (Smart Model Fixed)!"
+    return "Wind AI Server is Running (Final Fixed)!"
 
 @app.route('/ask', methods=['POST'])
 def ask_ai():
@@ -180,11 +180,19 @@ def ask_ai():
 
         user_input = request.json.get('question')
         
-        # 🕒 ส่งเวลาไทยปัจจุบันให้ AI
+        # 🕒 FIX TIMEZONE 2: ส่งเวลาไทยปัจจุบันให้ AI รู้เรื่อง
         now_thai = (datetime.utcnow() + timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
         live_status = get_realtime_string()
         
-        prompt = f"[Current Thai Time: {now_thai}] [Realtime Status: {live_status}] Question: {user_input}"
+        # Prompt ที่บังคับให้ AI เข้าใจบริบท
+        system_prompt = """
+        คุณคือ Data Scientist AI
+        - ข้อมูลประวัติอยู่ในตัวแปร `df` (Pandas)
+        - ถ้าผู้ใช้ถามยอดรวม, ประวัติ, สถิติ -> ต้องใช้ `execute_python_analysis` เขียนโค้ดเสมอ
+        - เวลาปัจจุบัน (ใน Prompt) คือเวลาไทย ใช้สำหรับอ้างอิง "วันนี้/เมื่อวาน"
+        """
+        
+        prompt = f"{system_prompt}\n[Current Thai Time: {now_thai}] [Realtime Status: {live_status}] Question: {user_input}"
         
         response = chat.send_message(prompt)
         return jsonify({"answer": response.text})
