@@ -9,25 +9,47 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import traceback
 
-# =====================================================
-# 1. ตั้งค่าและเตรียมระบบ
-# =====================================================
 app = Flask(__name__)
 CORS(app)
 
 print("🔄 กำลังเริ่มระบบ AI Data Scientist Server (Web Mode)...")
 
-# --- ส่วนแก้ไขกุญแจ (แบบ Auto-Fix) ---
-raw_key = "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDAdQ71VIcSz6tq\n3CKL7T6PjedlbPcoJnk2XjCe5+uPFK83G7B94xi0h2EAtG0AOFmeVICCLWm9gkfB\nhmCJBFBHHPcafswYMVAHETD2B5vjd/dZkiCqgLPT8BThJdDw7DDHw83Rv2bhRXSN\n79+TdjHOfCL4A0hnQ41HWgNHj4KWJoCnbP3IVPYB5dkLYqkz4Uw3dE0cOX8/Nd4k\nz3SbXoj95JRY974oiBLNoohjHtzvqdZG0HZ/0tq34VK5zD9vV9FlhlVxX4BrP3m0\nFi9YiDprrQVeKSjPCb75V8pYF4/zUkzQZ83l3EIKYZ3DtfvpCkcavfaDSg9RoEj0\nveOnCcZlAgMBAAECggEAAhLAwH/SnK9EB3irnppFrEI5FeyglPwlHiLRn0ScUwRE\nBvHzasfBgmBa+Sj4a6IvxPbgE4bttq7qmvkZnSBAxSNYvh5TkIcnd4wF3QCj+0VV\nks9yLqQIS+YwM2S25YGF3QEM/I91SkP3R3goDmydiL3pmoZeh05A/V3I30J6g6eN\nvvUccK4V3yoY0lN5kDRKsRkfwfmB4qg5ULi1F7tv1OoCvlJqXFq7fCVExr+A/4yM\nanTgUpovIWdAcGx1HD+muI5Rn4XJuKXGosv7++EjIAgOxgysZV6w5YMPpoRotuip\n5kVeI8G0D+zi7vnmmgSWloEXeJP8mpt+RoTYjlZtgQKBgQDe1dYIksIgij1w7dpX\nESQ5TpCGEsTu4yNPNaHYjb0wrE1DC1OUO+89QZtf+SZrscI/Wnkf6OSI2nHFr1ha\ncOQCY0TgeG99DvQgduVvDi92AyGDH9p3wOVB9qLljZFslERTEDUuSTzSnA89rv1E\n4u3D2medYV3oU3pnV5/UbFplNQKBgQDdGczXjSI50Zh1BArmMgVFK60TgtURY0j1\nkle9QO2mg7AZV1+/Ce8xVKN4LmbEQmuXSLMoXXSUu+/4fW+2Uwas2URK97NelFFo\n/GvveoeKsVzNoGlc6jaFo7gZKMevlavHX0j0x3edQQO9ruOn0upA3F/I71quZF4g\ns+rno3vycQKBgQDZ3GL32tQlEELlyAYyHbY2uRMfofYcQMHizWLA4ELZ9XtMUySR\nxs8uKpiICoV/wTlSy1ek1QOqsTeOuNI/CiRCGV/bvqPxts8Ddnr2Sv4n+QOouVnU\nvyjlhwbYO8K0T3lFZJE6AayPlLhp7E3+LYecdknbWrh/Ti5cHxVKj+0JCQKBgQDQ\nGvmgJPoC+9GIyj5L/ubQ/VQRmkJb9Fx2r8CfpF5LLYXxxDidgoc9olGey+X0ciP8\np/PhWV1ipSYweDhOnwUYagOKoGyW5/lcXMJnDKhJFbmo3YRubRDWZovgOm8BSFn/\n9SKhKqHeRJR11Af5LV9Jn2MUqJ1sqZGjLFU8o7cFMQKBgEPE9mND9HvYx5lxpbnx\nx3MFUhqz4LiA34+7qVE9N5Lx7j5lpynKBwbHlAdddUdC9Zcmzv0QOpCIDR6BO8Io\noeQDMbmeUzw0En+3Qo6tIRkNzSD92TQvqt0nJ1yKMPged0hoMrU0i8ffdsfwzyFw\nN3wQcAfw8RUN3Eeo5+252gL2\n-----END PRIVATE KEY-----\n"
-
-# ซ่อมตัวอักษรขึ้นบรรทัดใหม่
-fixed_key = raw_key.replace('\\n', '\n')
+# --- ส่วนแก้ไขกุญแจ (แบบ Multi-line String) ---
+# วิธีนี้ปลอดภัยที่สุดสำหรับ Python เพราะไม่ต้องกังวลเรื่อง \n
+private_key_pem = """-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDAdQ71VIcSz6tq
+3CKL7T6PjedlbPcoJnk2XjCe5+uPFK83G7B94xi0h2EAtG0AOFmeVICCLWm9gkfB
+hmCJBFBHHPcafswYMVAHETD2B5vjd/dZkiCqgLPT8BThJdDw7DDHw83Rv2bhRXSN
+79+TdjHOfCL4A0hnQ41HWgNHj4KWJoCnbP3IVPYB5dkLYqkz4Uw3dE0cOX8/Nd4k
+z3SbXoj95JRY974oiBLNoohjHtzvqdZG0HZ/0tq34VK5zD9vV9FlhlVxX4BrP3m0
+Fi9YiDprrQVeKSjPCb75V8pYF4/zUkzQZ83l3EIKYZ3DtfvpCkcavfaDSg9RoEj0
+veOnCcZlAgMBAAECggEAAhLAwH/SnK9EB3irnppFrEI5FeyglPwlHiLRn0ScUwRE
+BvHzasfBgmBa+Sj4a6IvxPbgE4bttq7qmvkZnSBAxSNYvh5TkIcnd4wF3QCj+0VV
+ks9yLqQIS+YwM2S25YGF3QEM/I91SkP3R3goDmydiL3pmoZeh05A/V3I30J6g6eN
+vvUccK4V3yoY0lN5kDRKsRkfwfmB4qg5ULi1F7tv1OoCvlJqXFq7fCVExr+A/4yM
+anTgUpovIWdAcGx1HD+muI5Rn4XJuKXGosv7++EjIAgOxgysZV6w5YMPpoRotuip
+5kVeI8G0D+zi7vnmmgSWloEXeJP8mpt+RoTYjlZtgQKBgQDe1dYIksIgij1w7dpX
+ESQ5TpCGEsTu4yNPNaHYjb0wrE1DC1OUO+89QZtf+SZrscI/Wnkf6OSI2nHFr1ha
+cOQCY0TgeG99DvQgduVvDi92AyGDH9p3wOVB9qLljZFslERTEDUuSTzSnA89rv1E
+4u3D2medYV3oU3pnV5/UbFplNQKBgQDdGczXjSI50Zh1BArmMgVFK60TgtURY0j1
+kle9QO2mg7AZV1+/Ce8xVKN4LmbEQmuXSLMoXXSUu+/4fW+2Uwas2URK97NelFFo
+/GvveoeKsVzNoGlc6jaFo7gZKMevlavHX0j0x3edQQO9ruOn0upA3F/I71quZF4g
+s+rno3vycQKBgQDZ3GL32tQlEELlyAYyHbY2uRMfofYcQMHizWLA4ELZ9XtMUySR
+xs8uKpiICoV/wTlSy1ek1QOqsTeOuNI/CiRCGV/bvqPxts8Ddnr2Sv4n+QOouVnU
+vyjlhwbYO8K0T3lFZJE6AayPlLhp7E3+LYecdknbWrh/Ti5cHxVKj+0JCQKBgQDQ
+GvmgJPoC+9GIyj5L/ubQ/VQRmkJb9Fx2r8CfpF5LLYXxxDidgoc9olGey+X0ciP8
+p/PhWV1ipSYweDhOnwUYagOKoGyW5/lcXMJnDKhJFbmo3YRubRDWZovgOm8BSFn/
+9SKhKqHeRJR11Af5LV9Jn2MUqJ1sqZGjLFU8o7cFMQKBgEPE9mND9HvYx5lxpbnx
+x3MFUhqz4LiA34+7qVE9N5Lx7j5lpynKBwbHlAdddUdC9Zcmzv0QOpCIDR6BO8Io
+oeQDMbmeUzw0En+3Qo6tIRkNzSD92TQvqt0nJ1yKMPged0hoMrU0i8ffdsfwzyFw
+N3wQcAfw8RUN3Eeo5+252gL2
+-----END PRIVATE KEY-----"""
 
 key_dict = {
   "type": "service_account",
   "project_id": "win-assistant-462002",
   "private_key_id": "8bd1899625d7cb5da8d9af585f2fa919999df02c",
-  "private_key": fixed_key,
+  "private_key": private_key_pem,
   "client_email": "firebase-adminsdk-fbsvc@win-assistant-462002.iam.gserviceaccount.com",
   "client_id": "115508101362044082902",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -42,7 +64,7 @@ try:
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://win-assistant-462002-default-rtdb.asia-southeast1.firebasedatabase.app'
     })
-    print("✅ Firebase Connected! (Auto-Fixed Key)")
+    print("✅ Firebase Connected! (Multi-line Key)")
 except Exception as e:
     print(f"❌ Firebase Error: {e}")
 
@@ -107,7 +129,6 @@ def refresh_data():
 
 refresh_data()
 
-# ฟังก์ชันดึงค่าสด
 def get_realtime_string():
     try:
         ref = db.reference('History')
@@ -121,7 +142,7 @@ def get_realtime_string():
     except: return "Error"
 
 # =====================================================
-# 3. Code Executor & Memory
+# 3. Code Executor
 # =====================================================
 
 def execute_python_analysis(code_string):
@@ -134,9 +155,13 @@ def execute_python_analysis(code_string):
         return str(local_vars.get('result'))
     except Exception as e: return f"Error: {str(e)}"
 
-# แก้ไขส่วนนี้ให้ถูกต้อง (Indent properly)
+# =====================================================
+# 4. Memory System
+# =====================================================
+
 MEMORY_FILE = "ai_memory.json"
 ai_memory = {}
+# โหลดความจำถ้ามีไฟล์
 if os.path.exists(MEMORY_FILE):
     try:
         with open(MEMORY_FILE, "r") as f:
@@ -156,7 +181,7 @@ def remember_info(topic, info):
 tools_list = [execute_python_analysis, remember_info, refresh_data]
 
 # =====================================================
-# 4. Start AI & Server
+# 5. Start AI & Server
 # =====================================================
 
 model = genai.GenerativeModel(
