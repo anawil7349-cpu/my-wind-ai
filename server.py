@@ -4,7 +4,7 @@ import pandas as pd
 import google.generativeai as genai
 import firebase_admin
 from firebase_admin import credentials, db
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta  # ตัวช่วยแก้เวลาไทย
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import traceback
@@ -15,9 +15,9 @@ import traceback
 app = Flask(__name__)
 CORS(app)
 
-print("🔄 กำลังเริ่มระบบ AI Data Scientist Server (Full Fixed)...")
+print("🔄 กำลังเริ่มระบบ AI Data Scientist Server (Cloud Ready)...")
 
-# 🔐 ดึง Key จาก Environment (Render)
+# 🔐 ดึง Key จาก Environment ของ Render (ปลอดภัย 100%)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 FIREBASE_CONFIG_JSON = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
 
@@ -25,14 +25,18 @@ FIREBASE_CONFIG_JSON = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# ตั้งค่า Firebase
+# ตั้งค่า Firebase (รองรับทั้งไฟล์ในเครื่อง และ JSON String บน Cloud)
 try:
     if not firebase_admin._apps:
         if FIREBASE_CONFIG_JSON:
+            # กรณีรันบน Cloud (Render)
             service_account_info = json.loads(FIREBASE_CONFIG_JSON)
             cred = credentials.Certificate(service_account_info)
+            print("✅ โหลด Firebase จาก Environment สำเร็จ")
         elif os.path.exists("serviceAccountKey.json"):
+            # กรณีรันในเครื่อง (Local Fallback)
             cred = credentials.Certificate("serviceAccountKey.json")
+            print("✅ โหลด Firebase จากไฟล์ JSON สำเร็จ")
         else:
             cred = None
             
@@ -45,7 +49,7 @@ except Exception as e:
     print(f"❌ Firebase Error: {e}")
 
 # =====================================================
-# ⚡️ FIX: ระบบเลือก Model แบบที่คุณต้องการ
+# ⚡️ FIX: ระบบเลือก Model อัตโนมัติ (กัน Error 404)
 # =====================================================
 def get_smart_model():
     candidates = [
@@ -58,19 +62,14 @@ def get_smart_model():
     print("🔍 กำลังค้นหาโมเดลที่ใช้งานได้...")
     for m_name in candidates:
         try:
-            print(f"   ...ทดสอบ: {m_name}")
             model = genai.GenerativeModel(model_name=m_name)
-            # ลองยิงคำถามสั้นๆ เพื่อเช็คว่า 404 ไหม
-            model.generate_content("test") 
+            model.generate_content("test") # ลองยิงเทส
             print(f"✅ ใช้โมเดลสำเร็จ: {m_name}")
             return model
-        except Exception:
-            continue
+        except: continue
             
-    print("⚠️ ไม่พบโมเดลในรายการ พยายามใช้ 'gemini-1.5-flash' เป็นค่าสุดท้าย")
-    return genai.GenerativeModel("gemini-1.5-flash")
+    return genai.GenerativeModel("gemini-1.5-flash") # ตัวกันตาย
 
-# สร้างโมเดลเตรียมไว้
 model = None
 if GEMINI_API_KEY:
     try:
@@ -79,7 +78,7 @@ if GEMINI_API_KEY:
         print(f"❌ Model Init Error: {e}")
 
 # =====================================================
-# 2. การจัดการข้อมูล (Pandas + Timezone Fix)
+# 2. การจัดการข้อมูล + แก้เวลาไทย (UTC+7)
 # =====================================================
 df = pd.DataFrame() 
 
@@ -94,7 +93,7 @@ def refresh_data():
         records = []
         for key, val in data.items():
             if isinstance(val, dict) and 'ts' in val:
-                # 🕒 FIX TIMEZONE: แปลง UTC -> ไทย (UTC+7)
+                # 🕒 หัวใจสำคัญ: แปลง UTC -> เวลาไทย (UTC+7)
                 dt = datetime.utcfromtimestamp(val['ts'] / 1000) + timedelta(hours=7)
                 
                 wind_p = float(val.get('wind', {}).get('p', 0))
@@ -126,7 +125,7 @@ if firebase_admin._apps:
     refresh_data()
 
 # =====================================================
-# 3. AI Tools & Functions
+# 3. AI Tools
 # =====================================================
 def execute_python_analysis(code_string):
     global df
@@ -151,55 +150,49 @@ def get_realtime_string():
     except: return "No Realtime Data"
 
 tools_list = [execute_python_analysis, refresh_data]
-
-# สร้าง Chat Session
 chat = None
-if model:
-    try:
-        # Instruction สำคัญ: ย้ำให้ใช้ Python ถ้าถามเรื่องประวัติ
-        chat = model.start_chat(enable_automatic_function_calling=True)
-    except: pass
 
 # =====================================================
 # 4. API Routes
 # =====================================================
 @app.route('/')
 def home():
-    return "Wind AI Server is Running (Final Fixed)!"
+    return "Wind AI Server is Running 24/7!"
 
 @app.route('/ask', methods=['POST'])
 def ask_ai():
     global chat
     try:
-        # Re-connect ถ้า Chat ยังไม่มี หรือหลุด
+        # Re-connect ถ้า Chat หลุด
         if not chat and model:
              chat = model.start_chat(enable_automatic_function_calling=True)
         
         if not chat:
-            return jsonify({"answer": "AI ยังไม่พร้อมใช้งาน (กรุณารอสักครู่ หรือเช็ค API Key)"})
+            return jsonify({"answer": "ระบบ AI ไม่พร้อมใช้งาน (เช็ค API Key)"})
 
         user_input = request.json.get('question')
         
-        # 🕒 FIX TIMEZONE 2: ส่งเวลาไทยปัจจุบันให้ AI รู้เรื่อง
+        # 🕒 ส่งเวลาไทยปัจจุบันให้ AI รู้ (เพื่อตอบคำถาม 'วันนี้/เมื่อวาน' ได้ถูก)
         now_thai = (datetime.utcnow() + timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
         live_status = get_realtime_string()
         
-        # Prompt ที่บังคับให้ AI เข้าใจบริบท
+        # Prompt สั่งให้ AI ทำงาน
         system_prompt = """
-        คุณคือ Data Scientist AI
-        - ข้อมูลประวัติอยู่ในตัวแปร `df` (Pandas)
-        - ถ้าผู้ใช้ถามยอดรวม, ประวัติ, สถิติ -> ต้องใช้ `execute_python_analysis` เขียนโค้ดเสมอ
-        - เวลาปัจจุบัน (ใน Prompt) คือเวลาไทย ใช้สำหรับอ้างอิง "วันนี้/เมื่อวาน"
+        คุณคือ Data Scientist AI วิเคราะห์พลังงานลม
+        - ข้อมูลประวัติอยู่ในตัวแปร `df` (Pandas) (เป็นเวลาไทยแล้ว)
+        - ถ้าถามยอดรวม/สถิติ -> ต้องเขียน Python ผ่าน `execute_python_analysis` เก็บผลที่ `result`
+        - ตอบเป็นภาษาไทย
         """
         
-        prompt = f"{system_prompt}\n[Current Thai Time: {now_thai}] [Realtime Status: {live_status}] Question: {user_input}"
+        full_prompt = f"{system_prompt}\n[Current Thai Time: {now_thai}] [Realtime Status: {live_status}] Question: {user_input}"
         
-        response = chat.send_message(prompt)
+        response = chat.send_message(full_prompt)
         return jsonify({"answer": response.text})
     except Exception as e:
         traceback.print_exc()
         return jsonify({"answer": f"Error: {str(e)}"})
 
 if __name__ == '__main__':
+    # สำคัญ: ต้องใช้ Port จาก Render
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
