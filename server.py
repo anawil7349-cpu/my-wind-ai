@@ -18,10 +18,9 @@ CORS(app)
 print("🔄 กำลังเริ่มระบบ AI Data Scientist Server (Web Mode)...")
 
 # --- ส่วนแก้ไขกุญแจ (แบบ Auto-Fix) ---
-# ใส่กุญแจดอกล่าสุดของคุณ (8bd18...)
 raw_key = "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDAdQ71VIcSz6tq\n3CKL7T6PjedlbPcoJnk2XjCe5+uPFK83G7B94xi0h2EAtG0AOFmeVICCLWm9gkfB\nhmCJBFBHHPcafswYMVAHETD2B5vjd/dZkiCqgLPT8BThJdDw7DDHw83Rv2bhRXSN\n79+TdjHOfCL4A0hnQ41HWgNHj4KWJoCnbP3IVPYB5dkLYqkz4Uw3dE0cOX8/Nd4k\nz3SbXoj95JRY974oiBLNoohjHtzvqdZG0HZ/0tq34VK5zD9vV9FlhlVxX4BrP3m0\nFi9YiDprrQVeKSjPCb75V8pYF4/zUkzQZ83l3EIKYZ3DtfvpCkcavfaDSg9RoEj0\nveOnCcZlAgMBAAECggEAAhLAwH/SnK9EB3irnppFrEI5FeyglPwlHiLRn0ScUwRE\nBvHzasfBgmBa+Sj4a6IvxPbgE4bttq7qmvkZnSBAxSNYvh5TkIcnd4wF3QCj+0VV\nks9yLqQIS+YwM2S25YGF3QEM/I91SkP3R3goDmydiL3pmoZeh05A/V3I30J6g6eN\nvvUccK4V3yoY0lN5kDRKsRkfwfmB4qg5ULi1F7tv1OoCvlJqXFq7fCVExr+A/4yM\nanTgUpovIWdAcGx1HD+muI5Rn4XJuKXGosv7++EjIAgOxgysZV6w5YMPpoRotuip\n5kVeI8G0D+zi7vnmmgSWloEXeJP8mpt+RoTYjlZtgQKBgQDe1dYIksIgij1w7dpX\nESQ5TpCGEsTu4yNPNaHYjb0wrE1DC1OUO+89QZtf+SZrscI/Wnkf6OSI2nHFr1ha\ncOQCY0TgeG99DvQgduVvDi92AyGDH9p3wOVB9qLljZFslERTEDUuSTzSnA89rv1E\n4u3D2medYV3oU3pnV5/UbFplNQKBgQDdGczXjSI50Zh1BArmMgVFK60TgtURY0j1\nkle9QO2mg7AZV1+/Ce8xVKN4LmbEQmuXSLMoXXSUu+/4fW+2Uwas2URK97NelFFo\n/GvveoeKsVzNoGlc6jaFo7gZKMevlavHX0j0x3edQQO9ruOn0upA3F/I71quZF4g\ns+rno3vycQKBgQDZ3GL32tQlEELlyAYyHbY2uRMfofYcQMHizWLA4ELZ9XtMUySR\nxs8uKpiICoV/wTlSy1ek1QOqsTeOuNI/CiRCGV/bvqPxts8Ddnr2Sv4n+QOouVnU\nvyjlhwbYO8K0T3lFZJE6AayPlLhp7E3+LYecdknbWrh/Ti5cHxVKj+0JCQKBgQDQ\nGvmgJPoC+9GIyj5L/ubQ/VQRmkJb9Fx2r8CfpF5LLYXxxDidgoc9olGey+X0ciP8\np/PhWV1ipSYweDhOnwUYagOKoGyW5/lcXMJnDKhJFbmo3YRubRDWZovgOm8BSFn/\n9SKhKqHeRJR11Af5LV9Jn2MUqJ1sqZGjLFU8o7cFMQKBgEPE9mND9HvYx5lxpbnx\nx3MFUhqz4LiA34+7qVE9N5Lx7j5lpynKBwbHlAdddUdC9Zcmzv0QOpCIDR6BO8Io\noeQDMbmeUzw0En+3Qo6tIRkNzSD92TQvqt0nJ1yKMPged0hoMrU0i8ffdsfwzyFw\nN3wQcAfw8RUN3Eeo5+252gL2\n-----END PRIVATE KEY-----\n"
 
-# บรรทัดนี้สำคัญมาก! สั่งให้มันซ่อมตัวอักษร \n โดยอัตโนมัติ
+# ซ่อมตัวอักษรขึ้นบรรทัดใหม่
 fixed_key = raw_key.replace('\\n', '\n')
 
 key_dict = {
@@ -135,17 +134,23 @@ def execute_python_analysis(code_string):
         return str(local_vars.get('result'))
     except Exception as e: return f"Error: {str(e)}"
 
+# แก้ไขส่วนนี้ให้ถูกต้อง (Indent properly)
 MEMORY_FILE = "ai_memory.json"
 ai_memory = {}
 if os.path.exists(MEMORY_FILE):
-    try: with open(MEMORY_FILE, "r") as f: ai_memory = json.load(f)
-    except: pass
+    try:
+        with open(MEMORY_FILE, "r") as f:
+            ai_memory = json.load(f)
+    except:
+        pass
 
 def remember_info(topic, info):
     ai_memory[topic] = info
     try:
-        with open(MEMORY_FILE, "w") as f: json.dump(ai_memory, f)
-    except: pass
+        with open(MEMORY_FILE, "w") as f:
+            json.dump(ai_memory, f)
+    except:
+        pass
     return f"จำแล้ว: {topic}"
 
 tools_list = [execute_python_analysis, remember_info, refresh_data]
